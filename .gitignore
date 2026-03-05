@@ -1,0 +1,7 @@
+# Build Artifacts
+*.o
+snes
+
+# Editor/LSP files
+compile_flags.txt
+.clangd
