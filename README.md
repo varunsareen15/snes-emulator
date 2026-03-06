@@ -29,3 +29,6 @@ make clean
 ## Dependencies
 
 - C++17 compiler (GCC or Clang)
+
+## License
+MIT
