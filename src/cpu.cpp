@@ -33,12 +33,10 @@ uint8_t CPU::read(uint16_t addr) {
   return rom[offset];
 }
 
-// void CPU::write(uint16_t addr, uint8_t value) {
-//   // temp will be replaced by bus
-//	uint8_t bank = reg_dbr & 0x35;
-//	uint32t offset = (bank * 0x10000) + addr;
-//	rom[offset] = value;
-// }
+void CPU::write(uint16_t addr, uint8_t value) {
+  // temp will be replaced by bus
+  wram[addr] = value;
+}
 
 bool CPU::is_m_flag_set() { return reg_p & 0x20; }
 bool CPU::is_x_flag_set() { return reg_p & 0x10; }
@@ -171,6 +169,28 @@ void CPU::step() {
     reg_pc += 2;
     cout << "0x8D step successful (skipped)" << endl;
     break;
+  case 0x22: { // JSL - Jump to Subroutine Long
+    // push program bank
+    write(reg_sp, reg_pbr);
+    reg_sp--;
+    // push return address (PC + 2, since operand is 3 bytes, but we push PC-1
+    // of the last byte
+    uint8_t ll = read(reg_pc);
+    reg_pc++;
+    uint8_t mm = read(reg_pc);
+    reg_pc++;
+    uint8_t hh = read(reg_pc);
+    // push current PC (poits at last byte of instruction)
+    write(reg_sp, (reg_pc << 8) & 0xFF); // high byte
+    reg_sp--;
+    write(reg_sp, reg_pc & 0xFF); // low byte
+    reg_sp--;
+    // Jump
+    reg_pc = ll | (mm << 8);
+    reg_pbr = hh;
+    cout << "0x22 step successful" << endl;
+    break;
+  }
   default:
     cout << "Unknown opcode: 0x" << hex << (int)opcode << endl;
     break;

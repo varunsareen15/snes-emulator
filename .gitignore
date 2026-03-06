@@ -1,6 +1,7 @@
 # Build Artifacts
 *.o
 snes
+output.txt
 
 # Editor/LSP files
 compile_flags.txt

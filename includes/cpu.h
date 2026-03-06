@@ -1,7 +1,7 @@
 #ifndef CPU_H
 #define CPU_H
 
-// #include <array>
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -12,7 +12,7 @@ public:
 
   // helpers
   uint8_t read(uint16_t addr);
-  // void write(uint16_t addr, uint8_t value);
+  void write(uint16_t addr, uint8_t value);
   bool is_m_flag_set();
   bool is_x_flag_set();
 
@@ -34,8 +34,8 @@ private:
                    // (16-bit)
   uint8_t reg_p;   // P: Status flags - N, V, M, X, D, I, Z, C (8-bit)
 
-  bool emulation_mode = true; // CPU starts in emulation mode
-  // std::array<uint8_t, 0x20000> wram = {}; // 128 KB work RAM
+  bool emulation_mode = true;             // CPU starts in emulation mode
+  std::array<uint8_t, 0x20000> wram = {}; // 128 KB work RAM
 };
 
 #endif // CPU_H
