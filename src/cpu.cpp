@@ -62,7 +62,7 @@ void CPU::step() {
     }
     // When entering native mode, M and X flags should be set
     if (!emulation_mode && old_emu) {
-      reg_p |= 0xFE; // set M and X flags (8-bit registers)
+      reg_p |= 0x30; // set M and X flags (8-bit registers)
     }
     cout << "0xFB step successful" << endl;
     break;
@@ -181,7 +181,7 @@ void CPU::step() {
     reg_pc++;
     uint8_t hh = read(reg_pc);
     // push current PC (poits at last byte of instruction)
-    write(reg_sp, (reg_pc << 8) & 0xFF); // high byte
+    write(reg_sp, (reg_pc >> 8) & 0xFF); // high byte
     reg_sp--;
     write(reg_sp, reg_pc & 0xFF); // low byte
     reg_sp--;
