@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
 
   // Unique Step Counter
   set<uint8_t> implemented, skipped, unknown;
-  for (int i = 0; i < 256; i++) {
+  for (int i = 1; i <= 256; i++) {
     cout << "Step " << dec << i << ": ";
     auto result = cpu.step();
     switch (result.status) {
