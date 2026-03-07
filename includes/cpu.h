@@ -5,10 +5,16 @@
 #include <cstdint>
 #include <vector>
 
+enum class OpStatus { Implemented, Skipped, Unknown };
+struct StepResult {
+  uint8_t opcode;
+  OpStatus status;
+};
+
 class CPU {
 public:
   CPU(const std::vector<uint8_t> &rom);
-  void step();
+  StepResult step();
 
   // helpers
   uint8_t read(uint16_t addr);

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <vector>
 
 using namespace std;
@@ -25,8 +26,25 @@ int main(int argc, char *argv[]) {
   Cartridge cart(data);
   cart.print_header();
   CPU cpu(data);
-  for (uint8_t i = 0; i <= 128; i++) {
-    cpu.step();
+
+  // Unique Step Counter
+  set<uint8_t> implemented, skipped, unknown;
+  for (int i = 0; i < 256; i++) {
+    cout << "Step " << dec << i << ": ";
+    auto result = cpu.step();
+    switch (result.status) {
+    case OpStatus::Implemented:
+      implemented.insert(result.opcode);
+      break;
+    case OpStatus::Skipped:
+      skipped.insert(result.opcode);
+      break;
+    case OpStatus::Unknown:
+      unknown.insert(result.opcode);
+      break;
+    }
   }
+  cout << "\nImplemented: " << dec << implemented.size() << "\nSkipped: " << dec
+       << skipped.size() << "\nUnknown: " << dec << unknown.size() << endl;
   return 0;
 }
