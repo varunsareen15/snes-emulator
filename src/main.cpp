@@ -25,11 +25,12 @@ int main(int argc, char *argv[]) {
 
   Cartridge cart(data);
   cart.print_header();
-  CPU cpu(data);
+	Bus bus(data);
+  Cpu cpu(bus);
 
   // Unique Step Counter
   set<uint8_t> implemented, skipped, unknown;
-  for (int i = 1; i <= 256; i++) {
+  for (int i = 1; i <= 1024; i++) {
     cout << "Step " << dec << i << ": ";
     auto result = cpu.step();
     switch (result.status) {

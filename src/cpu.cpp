@@ -3,16 +3,16 @@
 
 using namespace std;
 
-CPU::CPU(const vector<uint8_t> &file_data)
-    : rom(file_data), reg_a(0), reg_x(0), reg_y(0), reg_sp(0), reg_pbr(0),
+Cpu::Cpu(Bus &file_data)
+    : bus(file_data), reg_a(0), reg_x(0), reg_y(0), reg_sp(0), reg_pbr(0),
       reg_dbr(0), reg_d(0), reg_p(0) {
   size_t header_offset;
 
-  uint16_t lo_check = rom[0x7FDE] | (rom[0x7FDF] << 8);
-  uint16_t lo_comp = rom[0x7FDC] | (rom[0x7FDD] << 8);
+  uint16_t lo_check = bus.read(0x00, 0x7FDE) | (bus.read(0x00, 0x7FDF) << 8);
+  uint16_t lo_comp = bus.read(0x00, 0x7FDC) | (bus.read(0x00, 0x7FDD) << 8);
 
-  uint16_t hi_check = rom[0xFFDE] | (rom[0xFFDF] << 8);
-  uint16_t hi_comp = rom[0xFFDC] | (rom[0xFFDD] << 8);
+  uint16_t hi_check = bus.read(0x00, 0xFFDE) | (bus.read(0x00, 0xFFDF) << 8);
+  uint16_t hi_comp = bus.read(0x00, 0xFFDC) | (bus.read(0x00, 0xFFDD) << 8);
 
   if ((hi_check + hi_comp) == 0xFFFF) {
     header_offset = 0xFFC0;
@@ -22,26 +22,21 @@ CPU::CPU(const vector<uint8_t> &file_data)
     header_offset = 0x0000;
   }
 
-  reg_pc = rom[header_offset + 0x3C] | (rom[header_offset + 0x3D] << 8);
+  reg_pc = bus.read(0x00, header_offset + 0x3C) |
+           (bus.read(0x00, header_offset + 0x3D) << 8);
   cout << "Reset vector: 0x" << hex << reg_pc << endl;
 }
 
-uint8_t CPU::read(uint16_t addr) {
-  // temp HiRom mapping - will be replaced by bus
-  uint8_t bank = reg_pbr & 0x3F;
-  uint32_t offset = (bank * 0x10000) + addr;
-  return rom[offset];
+uint8_t Cpu::read(uint16_t addr) { return bus.read(reg_pbr, addr); }
+
+void Cpu::write(uint16_t addr, uint8_t value) {
+  bus.write(reg_pbr, addr, value);
 }
 
-void CPU::write(uint16_t addr, uint8_t value) {
-  // temp will be replaced by bus
-  wram[addr] = value;
-}
+bool Cpu::is_m_flag_set() { return reg_p & 0x20; }
+bool Cpu::is_x_flag_set() { return reg_p & 0x10; }
 
-bool CPU::is_m_flag_set() { return reg_p & 0x20; }
-bool CPU::is_x_flag_set() { return reg_p & 0x10; }
-
-StepResult CPU::step() {
+StepResult Cpu::step() {
   uint8_t opcode = read(reg_pc);
   reg_pc++;
   OpStatus status = OpStatus::Unknown;
@@ -188,7 +183,7 @@ StepResult CPU::step() {
     break;
   case 0x22: { // JSL - Jump to Subroutine Long
     // push program bank
-    write(reg_sp, reg_pbr);
+    bus.write(0x00, reg_sp, reg_pbr);
     reg_sp--;
     // push return address (PC + 2, since operand is 3 bytes, but we push PC-1
     // of the last byte
@@ -198,9 +193,9 @@ StepResult CPU::step() {
     reg_pc++;
     uint8_t hh = read(reg_pc);
     // push current PC (points at last byte of instruction)
-    write(reg_sp, (reg_pc >> 8) & 0xFF); // high byte
+    bus.write(0x00, reg_sp, (reg_pc >> 8) & 0xFF); // high byte
     reg_sp--;
-    write(reg_sp, reg_pc & 0xFF); // low byte
+    bus.write(0x00, reg_sp, reg_pc & 0xFF); // low byte
     reg_sp--;
     // Jump
     reg_pc = ll | (mm << 8);
@@ -211,10 +206,10 @@ StepResult CPU::step() {
   }
   case 0x0B: { // PHD - Push Direct Page to Stack
     // push high byte
-    write(reg_sp, (reg_d >> 8) & 0xFF);
+    bus.write(0x00, reg_sp, (reg_d >> 8) & 0xFF);
     reg_sp--;
     // push low byte
-    write(reg_sp, reg_d & 0xFF);
+    bus.write(0x00, reg_sp, reg_d & 0xFF);
     reg_sp--;
     cout << "0x0B step successful - PHD" << endl;
     status = OpStatus::Implemented;
@@ -222,7 +217,7 @@ StepResult CPU::step() {
   }
   case 0x8B: { // PHB - Push Data Bank to Stack
     // push data bank
-    write(reg_sp, reg_dbr);
+    bus.write(0x00, reg_sp, reg_dbr);
     reg_sp--;
     cout << "0x8B step successful - PHB" << endl;
     status = OpStatus::Implemented;
@@ -256,6 +251,47 @@ StepResult CPU::step() {
     cout << "0xF0 step successful (skipped)" << endl;
     status = OpStatus::Skipped;
     break;
+  case 0x4C: { // JMP Absolute
+    uint8_t lo = read(reg_pc);
+    reg_pc++;
+    uint8_t hi = read(reg_pc);
+    reg_pc = lo | (hi << 8);
+    cout << "0x4C step successful - JMP" << endl;
+    status = OpStatus::Implemented;
+    break;
+  }
+  case 0x85: // STA dp - skip for now
+    reg_pc += 1;
+    cout << "0x85 step successful (skipped)" << endl;
+    status = OpStatus::Skipped;
+    break;
+  case 0xF4: // PEA - Push Affective Address - skip for now
+    reg_pc += 2;
+    cout << "0xF4 step successful (skipped)" << endl;
+    status = OpStatus::Skipped;
+    break;
+  case 0x2B: { // PLD - Pull Direct Page
+    reg_sp++;
+    uint8_t lo = bus.read(0x00, reg_sp);
+    reg_sp++;
+    uint8_t hi = bus.read(0x00, reg_sp);
+    reg_d = lo | (hi << 8);
+    cout << "0x2B step successful - PLD" << endl;
+    status = OpStatus::Implemented;
+    break;
+  }
+  case 0x6B: { // RTL - Return From Subroutine Long
+    reg_sp++;
+    uint8_t lo = bus.read(0x00, reg_sp);
+    reg_sp++;
+    uint8_t hi = bus.read(0x00, reg_sp);
+    reg_sp++;
+    reg_pbr = bus.read(0x00, reg_sp);
+    reg_pc = (lo | (hi << 8)) + 1; // +1 because JSL pushed PC-1
+    cout << "0x6B step successful - RTL" << endl;
+    status = OpStatus::Implemented;
+    break;
+  }
   default:
     cout << "Unknown opcode: 0x" << hex << (int)opcode << endl;
     status = OpStatus::Unknown;

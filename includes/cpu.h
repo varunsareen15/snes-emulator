@@ -1,9 +1,8 @@
 #ifndef CPU_H
 #define CPU_H
 
-#include <array>
+#include "bus.h"
 #include <cstdint>
-#include <vector>
 
 enum class OpStatus { Implemented, Skipped, Unknown };
 struct StepResult {
@@ -11,9 +10,9 @@ struct StepResult {
   OpStatus status;
 };
 
-class CPU {
+class Cpu {
 public:
-  CPU(const std::vector<uint8_t> &rom);
+  Cpu(Bus &rom);
   StepResult step();
 
   // helpers
@@ -23,7 +22,7 @@ public:
   bool is_x_flag_set();
 
 private:
-  const std::vector<uint8_t> &rom;
+  Bus &bus;
   uint16_t reg_a; // A: Accumulator - math and logic (8 or 16-bit)
 
   // X, Y: Index registers - looping offsets (8 or 16-bit)
@@ -40,8 +39,7 @@ private:
                    // (16-bit)
   uint8_t reg_p;   // P: Status flags - N, V, M, X, D, I, Z, C (8-bit)
 
-  bool emulation_mode = true;             // CPU starts in emulation mode
-  std::array<uint8_t, 0x20000> wram = {}; // 128 KB work RAM
+  bool emulation_mode = true; // CPU starts in emulation mode
 };
 
 #endif // CPU_H
